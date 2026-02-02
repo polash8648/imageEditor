@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Frame Editor</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .editor-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .preview-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .preview-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #f5f5f5;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 3px dashed #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #previewWrapper {
+            position: relative;
+            width: 360px;
+            height: 360px;
+            overflow: hidden;
+            border-radius: 50%;
+            background: #fff;
+        }
+
+        #userPhoto {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        .frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            border-radius: 50%;
+            border: 15px solid rgba(102, 126, 234, 0.2);
+            box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .value-display {
+            text-align: center;
+            margin-top: 5px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #uploadBtn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        #uploadBtn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        #download {
+            background: #667eea;
+            color: white;
+        }
+
+        #download:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .instructions {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #667eea;
+        }
+
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #555;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Hidden canvas for processing */
+        #finalCanvas {
+            display: none;
+        }
+
+        /* Drag and drop zone */
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            background: #e3f2fd;
+            border-color: #764ba2;
+        }
+
+        .drop-zone i {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .drop-zone small {
+            color: #999;
+        }
+
+        /* Reset button */
+        #resetBtn {
+            background: #ff9800;
+            color: white;
+            margin-top: 10px;
+        }
+
+        #resetBtn:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        /* Preview controls */
+        .preview-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preview-btn {
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .preview-btn:hover {
+            background: #5a67d8;
+        }
+
+        .preview-info {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 Image Frame Editor</h1>
+        
+        <div class="main-content">
+            <div class="editor-section">
+                <!-- Drag and Drop Zone -->
+                <div class="drop-zone" id="dropZone">
+                    <div>📁</div>
+                    <p><strong>Drag & Drop your image here</strong></p>
+                    <p>or</p>
+                    <p>Click to browse</p>
+                    <small>Supports JPEG, PNG, WebP</small>
+                </div>
+
+                <input type="file" id="upload" accept="image/*" style="display: none;">
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="zoom">🔍 Zoom: <span id="zoomValue">1.0</span>x</label>
+                        <input type="range" id="zoom" min="0.1" max="3" step="0.1" value="1">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="xMove">↔ Horizontal Position: <span id="xValue">0px</span></label>
+                        <input type="range" id="xMove" min="-200" max="200" value="0">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="yMove">↕ Vertical Position: <span id="yValue">0px</span></label>
+                        <input type="range" id="yMove" min="-200" max="200" value="0">
+                    </div>
+
+                    <div class="buttons">
+                        <button id="uploadBtn">📁 Upload Image</button>
+                        <button id="download">💾 Download Image</button>
+                    </div>
+                    
+                    <button id="resetBtn">🔄 Reset All</button>
+                </div>
+
+                <div class="instructions">
+                    <h3>How to Use:</h3>
+                    <ol>
+                        <li>Drag & drop an image or click "Upload Image"</li>
+                        <li>Adjust zoom and position using sliders</li>
+                        <li>Preview the result in real-time</li>
+                        <li>Click "Download Image" to save</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <h3>Live Preview:</h3>
+                <div class="preview-container">
+                    <div id="previewWrapper">
+                        <img id="userPhoto" src="" alt="Uploaded Image" style="display: none;">
+                        <div class="frame-overlay"></div>
+                    </div>
+                </div>
+                
+                <div class="preview-info">
+                    <p>Preview Size: 360×360px | Output: 1080×1080px</p>
+                </div>
+                
+                <div class="preview-controls">
+                    <button class="preview-btn" id="fitImage">🔄 Fit Image</button>
+                    <button class="preview-btn" id="centerImage">🎯 Center Image</button>
+                </div>
+
+                <div class="instructions">
+                    <h3>Tips:</h3>
+                    <ul>
+                        <li>For best results, use square images (1:1 ratio)</li>
+                        <li>Zoom range: 0.1x to 3x</li>
+                        <li>Position range: ±200px</li>
+                        <li>Final output: 1080×1080 pixels (Instagram size)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden canvas for processing -->
+        <canvas id="finalCanvas"></canvas>
+
+        <footer>
+            <p>Made with ❤️ | Hosted on GitHub Pages | All processing done in your browser</p>
+        </footer>
+    </div>
+
+    <script>
+        // Store image data and state
+        let scale = 1, x = 0, y = 0;
+        let uploadedImageData = null;
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let imageNaturalWidth = 0, imageNaturalHeight = 0;
+
+        // Initialize
+        $(document).ready(function() {
+            updateValueDisplays();
+            
+            // Setup drag and drop
+            setupDragAndDrop();
+            
+            // Setup image dragging
+            setupImageDragging();
+        });
+
+        // Setup drag and drop functionality
+        function setupDragAndDrop() {
+            const dropZone = $('#dropZone');
+            const fileInput = $('#upload');
+
+            // Click on drop zone triggers file input
+            dropZone.on('click', function(e) {
+                if (e.target === this) {
+                    fileInput.click();
+                }
+            });
+
+            // File input change
+            fileInput.on('change', handleFileSelect);
+
+            // Drag and drop events
+            dropZone.on('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).addClass('dragover');
+            });
+
+            dropZone.on('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('dragover');
+            });
+
+            dropZone.on('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('dragover');
+                
+                const files = e.originalEvent.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        handleFile(file);
+                    } else {
+                        alert("Please drop an image file (JPEG, PNG, WebP, etc.)");
+                    }
+                }
+            });
+
+            // Upload button
+            $('#uploadBtn').on('click', function() {
+                fileInput.click();
+            });
+        }
+
+        // Handle file selection
+        function handleFileSelect(e) {
+            const file = this.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        // Process file
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImageData = e.target.result;
+                const img = new Image();
+                img.onload = function() {
+                    imageNaturalWidth = this.naturalWidth;
+                    imageNaturalHeight = this.naturalHeight;
+                    
+                    // Show image
+                    $('#userPhoto').attr('src', e.target.result).show();
+                    
+                    // Reset position and scale
+                    scale = 1;
+                    x = 0;
+                    y = 0;
+                    
+                    // Update sliders
+                    $('#zoom').val(scale);
+                    $('#xMove').val(x);
+                    $('#yMove').val(y);
+                    
+                    // Update display
+                    updateValueDisplays();
+                    updatePreview();
+                    
+                    // Show success message
+                    $('#dropZone').html(`
+                        <div>✅</div>
+                        <p><strong>Image Loaded Successfully!</strong></p>
+                        <p>${file.name}</p>
+                        <small>${Math.round(file.size/1024)} KB</small>
+                    `);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Setup image dragging for preview
+        function setupImageDragging() {
+            const previewWrapper = $('#previewWrapper');
+            let isDragging = false;
+            let startX, startY;
+            let startTranslateX, startTranslateY;
+
+            previewWrapper.on('mousedown touchstart', function(e) {
+                if (!uploadedImageData) return;
+                
+                e.preventDefault();
+                isDragging = true;
+                
+                // Get starting position
+                const rect = this.getBoundingClientRect();
+                if (e.type === 'mousedown') {
+                    startX = e.clientX;
+                    startY = e.clientY;
+                } else {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }
+                
+                // Store current translate values
+                const transform = $('#userPhoto').css('transform');
+                if (transform !== 'none') {
+                    const matrix = new DOMMatrix(transform);
+                    startTranslateX = matrix.m41;
+                    startTranslateY = matrix.m42;
+                } else {
+                    startTranslateX = 0;
+                    startTranslateY = 0;
+                }
+                
+                // Update cursor
+                previewWrapper.css('cursor', 'grabbing');
+            });
+
+            $(document).on('mousemove touchmove', function(e) {
+                if (!isDragging || !uploadedImageData) return;
+                
+                e.preventDefault();
+                
+                // Calculate movement
+                let clientX, clientY;
+                if (e.type === 'mousemove') {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                } else {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+                
+                // Calculate new position (with boundary limits)
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+                
+                // Convert preview movement to actual pixel movement (preview is 360px, output is 1080px)
+                const scaleFactor = 1080 / 360;
+                const newX = Math.max(-200, Math.min(200, (startTranslateX + deltaX) * scaleFactor));
+                const newY = Math.max(-200, Math.min(200, (startTranslateY + deltaY) * scaleFactor));
+                
+                // Update values
+                x = Math.round(newX);
+                y = Math.round(newY);
+                
+                // Update sliders
+                $('#xMove').val(x);
+                $('#yMove').val(y);
+                
+                // Update display
+                updateValueDisplays();
+                updatePreview();
+            });
+
+            $(document).on('mouseup touchend', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    previewWrapper.css('cursor', 'grab');
+                }
+            });
+        }
+
+        // Zoom control
+        $('#zoom').on('input', function() {
+            scale = parseFloat($(this).val());
+            $('#zoomValue').text(scale.toFixed(1));
+            updatePreview();
+        });
+
+        // Horizontal position control
+        $('#xMove').on('input', function() {
+            x = parseInt($(this).val());
+            $('#xValue').text(x + 'px');
+            updatePreview();
+        });
+
+        // Vertical position control
+        $('#yMove').on('input', function() {
+            y = parseInt($(this).val());
+            $('#yValue').text(y + 'px');
+            updatePreview();
+        });
+
+        // Update preview with accurate positioning
+        function updatePreview() {
+            if (!uploadedImageData) return;
+            
+            const $img = $('#userPhoto');
+            
+            // Convert actual coordinates (1080px canvas) to preview coordinates (360px preview)
+            const previewScale = 360 / 1080;
+            const previewX = x * previewScale;
+            const previewY = y * previewScale;
+            
+            // Apply transform for preview
+            $img.css({
+                'transform': `translate(${previewX}px, ${previewY}px) scale(${scale})`,
+                'transition': 'transform 0.2s ease'
+            });
+        }
+
+        // Update value displays
+        function updateValueDisplays() {
+            $('#zoomValue').text(scale.toFixed(1));
+            $('#xValue').text(x + 'px');
+            $('#yValue').text(y + 'px');
+        }
+
+        // Fit image button
+        $('#fitImage').on('click', function() {
+            if (!uploadedImageData) return;
+            
+            // Calculate scale to fit the circular area
+            const containerSize = 840; // 420 radius * 2
+            const imageSize = Math.max(imageNaturalWidth, imageNaturalHeight);
+            const fitScale = containerSize / imageSize * 0.95; // 95% to add some padding
+            
+            scale = Math.max(0.1, Math.min(3, fitScale));
+            x = 0;
+            y = 0;
+            
+            // Update controls
+            $('#zoom').val(scale);
+            $('#xMove').val(x);
+            $('#yMove').val(y);
+            
+            updateValueDisplays();
+            updatePreview();
+        });
+
+        // Center image button
+        $('#centerImage').on('click', function() {
+            if (!uploadedImageData) return;
+            
+            x = 0;
+            y = 0;
+            
+            // Update controls
+            $('#xMove').val(x);
+            $('#yMove').val(y);
+            
+            updateValueDisplays();
+            updatePreview();
+        });
+
+        // Reset button
+        $('#resetBtn').on('click', function() {
+            scale = 1;
+            x = 0;
+            y = 0;
+            
+            // Update controls
+            $('#zoom').val(scale);
+            $('#xMove').val(x);
+            $('#yMove').val(y);
+            
+            updateValueDisplays();
+            updatePreview();
+            
+            // Reset drop zone
+            $('#dropZone').html(`
+                <div>📁</div>
+                <p><strong>Drag & Drop your image here</strong></p>
+                <p>or</p>
+                <p>Click to browse</p>
+                <small>Supports JPEG, PNG, WebP</small>
+            `);
+            
+            // Hide image
+            $('#userPhoto').hide().attr('src', '');
+            uploadedImageData = null;
+        });
+
+        // Download handler
+        $('#download').on('click', function() {
+            if (!uploadedImageData) {
+                alert("Please upload an image first!");
+                return;
+            }
+
+            const canvas = document.getElementById('finalCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size for high-quality output
+            canvas.width = 1080;
+            canvas.height = 1080;
+
+            // Create image objects
+            const userImg = new Image();
+            const frameImg = new Image();
+
+            // Load user image
+            userImg.src = uploadedImageData;
+
+            userImg.onload = function() {
+                // Draw white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Create circular clipping path
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(540, 540, 420, 0, Math.PI * 2);
+                ctx.clip();
+
+                // Draw user image with transformations
+                const centerX = 540 + x;
+                const centerY = 540 + y;
+                
+                ctx.translate(centerX, centerY);
+                ctx.scale(scale, scale);
+                ctx.drawImage(userImg, -userImg.width / 2, -userImg.height / 2);
+                ctx.restore();
+
+                // Try to load frame (for GitHub Pages)
+                frameImg.crossOrigin = 'anonymous';
+                
+                // Try different frame sources
+                const frameSources = [
+                    'frame.png',
+                    './frame.png',
+                    'assets/frame.png',
+                    'images/frame.png'
+                ];
+                
+                let frameLoaded = false;
+                let currentSourceIndex = 0;
+
+                function tryNextFrameSource() {
+                    if (currentSourceIndex < frameSources.length) {
+                        frameImg.src = frameSources[currentSourceIndex];
+                        currentSourceIndex++;
+                    } else {
+                        // No frame found, draw decorative frame
+                        drawDecorativeFrame(ctx);
+                        downloadFinalImage(canvas);
+                    }
+                }
+
+                frameImg.onload = function() {
+                    frameLoaded = true;
+                    ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+                    downloadFinalImage(canvas);
+                };
+
+                frameImg.onerror = function() {
+                    tryNextFrameSource();
+                };
+
+                // Start trying frame sources
+                tryNextFrameSource();
+
+                // Timeout fallback
+                setTimeout(function() {
+                    if (!frameLoaded) {
+                        drawDecorativeFrame(ctx);
+                        downloadFinalImage(canvas);
+                    }
+                }, 3000);
+            };
+
+            userImg.onerror = function() {
+                alert('Error loading image. Please try uploading again.');
+            };
+        });
+
+        // Draw decorative frame
+        function drawDecorativeFrame(ctx) {
+            ctx.save();
+            
+            // Outer frame
+            ctx.beginPath();
+            ctx.arc(540, 540, 440, 0, Math.PI * 2);
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 20;
+            ctx.stroke();
+
+            // Inner frame
+            ctx.beginPath();
+            ctx.arc(540, 540, 420, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 10;
+            ctx.stroke();
+
+            // Decorative elements
+            ctx.fillStyle = '#764ba2';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * Math.PI) / 4;
+                const dotX = 540 + Math.cos(angle) * 430;
+                const dotY = 540 + Math.sin(angle) * 430;
+                ctx.beginPath();
+                ctx.arc(dotX, dotY, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        // Download final image
+        function downloadFinalImage(canvas) {
+            try {
+                // Create download link
+                const link = document.createElement('a');
+                link.download = 'framed-photo-' + Date.now() + '.png';
+                
+                // Convert canvas to data URL
+                link.href = canvas.toDataURL('image/png', 1.0);
+                
+                // Trigger download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show success message
+                setTimeout(() => {
+                    alert('✅ Image downloaded successfully!');
+                }, 500);
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                
+                // Fallback for older browsers
+                try {
+                    canvas.toBlob(function(blob) {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.download = 'framed-photo-' + Date.now() + '.png';
+                        link.href = url;
+                        link.click();
+                        setTimeout(() => URL.revokeObjectURL(url), 100);
+                    }, 'image/png');
+                } catch (blobError) {
+                    alert('⚠️ Download failed. Please try a different browser.');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
